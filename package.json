@@ -1,0 +1,12 @@
+{
+  "name": "04_myyoutube",
+  "version": "1.0.0",
+  "description": "a youtube like application",
+  "license": "ISC",
+  "author": "Arry",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
