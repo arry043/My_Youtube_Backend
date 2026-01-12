@@ -4,6 +4,17 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinay.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        user.generateAccessToken();
+        user.generateRefreshToken();
+        
+    } catch (error) {
+        throw new ApiError(500, 'Error generating tokens')
+    }
+}
+
 const registerUser = asyncHandler(async (req, res) => {
     // Steps: (Algorithm)
     // get user data from frontend
@@ -17,8 +28,8 @@ const registerUser = asyncHandler(async (req, res) => {
     // send response
 
     const { username, email, fullName, password } = req.body;
-    console.log("password: ", password);
 
+    // console.log("Register User Data: ", req.body);
     // validate user data
     // if(fullName == "" ){
     //     throw new ApiError(400, 'Full name is required')
@@ -44,7 +55,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // check for images & check for avatar
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImgLocalPath = req.files?.coverImg[0]?.path;
+    // const coverImgLocalPath = req.files?.coverImg[0]?.path;
+
+    let coverImgLocalPath;
+    if(req.files && Array.isArray(req.files.coverImg) && req.files.coverImg.length > 0){
+        coverImgLocalPath = req.files.coverImg[0].path;
+    }
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar image is required");
@@ -59,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // create user object and save to db
-    const user = User.create({
+    const user = await User.create({
         username: username.toLowerCase(),
         email,
         fullName,
@@ -77,6 +93,8 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to register user");
     }
 
+    console.log("Created User: ", createdUser);
+
     // send response
     return res
         .status(201)
@@ -85,4 +103,38 @@ const registerUser = asyncHandler(async (req, res) => {
         );
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async (req, res) => {
+    // req.body -> data
+    // username or email, password (validation)
+    // find user by username or email
+    // password match
+    // access & refresh token (jwt)
+    // if user found & password match -> send response (cookies)
+
+    const { usernameOrEmail, password } = req.body;
+
+    if(!usernameOrEmail || !password){
+        throw new ApiError(400, 'All fields are required')
+    }
+
+    // if usernameOrEmail have @ then it is email else username
+    const queryField = usernameOrEmail.includes("@")
+        ? { email: usernameOrEmail.toLowerCase() }
+        : { username: usernameOrEmail.toLowerCase() };
+    
+    const user = await User.findOne(queryField);
+
+    if(!user){
+        throw new ApiError(404, 'User not found')
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+    if(!isPasswordValid){
+        throw new ApiError(401, 'Invalid user credentials')
+    }
+    
+    const { accessToken, refreshToken } = generateAccessRefreshTokens(user);
+
+})
+
+export { registerUser, loginUser };
