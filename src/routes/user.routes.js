@@ -37,7 +37,7 @@ router
     .patch(veryfyJWT, upload.single("avatar"), updateUserAvatar);
 router
     .route("/update-cover-img")
-    .patch(veryfyJWT, upload.single("cov erImg"), updateUserCoverImg);
+    .patch(veryfyJWT, upload.single("coverImg"), updateUserCoverImg);
 router.route("/c/:username").get(veryfyJWT, getUserChannelProfile);
 router.route("/watch-history").get(veryfyJWT, getWatchHistory);
 
