@@ -37,6 +37,7 @@ const videoSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// Plugin: mongoose-aggregate-paginate -> mongooseAggregatePaginate is used to paginate the videos in the database that helps us to get the videos in pages 
 videoSchema.plugin(mongooseAggregatePaginate);
 
 const Video = mongoose.model("Video", videoSchema);
