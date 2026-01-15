@@ -42,7 +42,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
     .populate("owner", "-password -refreshToken -watchHistory -coverImg -email -createdAt -updatedAt")
     .sort({ createdAt: -1 });
 
-    console.log("all tweets: ",tweets)
+    // console.log("all tweets: ",tweets)
 
     if(tweets.length === 0) {
         throw new ApiError(404, "No tweets found");
@@ -55,10 +55,49 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
 const updateTweet = asyncHandler(async (req, res) => {
     //TODO: update tweet
+    const { tweetId } = req.params;
+    const { content } = req.body;
+
+    if(!content) {
+        throw new ApiError(400, "Content is required");
+    }
+
+    if(!tweetId) {
+        throw new ApiError(400, "Tweet id is required");
+    }
+
+    const tweet = await Tweet.findByIdAndUpdate(tweetId, { content }, { new: true });
+
+    if(!tweet) {
+        throw new ApiError(404, "Tweet not found");
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, tweet, "Tweet updated successfully"));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
     //TODO: delete tweet
+    const { tweetId } = req.params;
+
+    if(!tweetId) {
+        throw new ApiError(400, "Tweet id is required");
+    }
+
+    const tweet = await Tweet.findByIdAndDelete(tweetId);
+
+    if(tweet?.owner?._id.toString() !== req?.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to delete this tweet");
+    }
+
+    if(!tweet) {
+        throw new ApiError(404, "Tweet not found");
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, tweet, "Tweet deleted successfully"));
 });
 
 export { createTweet, getUserTweets, updateTweet, deleteTweet };
