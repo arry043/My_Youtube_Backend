@@ -57,6 +57,10 @@ const publishAVideo = asyncHandler(async (req, res) => {
     const videoUpload = await uploadOnCloudinary(videoLocalPath);
     const thumbUpload = await uploadOnCloudinary(thumbnailLocalPath);
 
+    // delete file from locals
+    fs.unlinkSync(videoLocalPath);
+    fs.unlinkSync(thumbnailLocalPath);
+
     if (!videoUpload?.url) {
         throw new ApiError(500, "Video upload failed on Cloudinary");
     }
@@ -91,12 +95,56 @@ const publishAVideo = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     //TODO: get video by id
+    if(!videoId){
+        throw new ApiError(404, "Video not found or deleted");
+    }
+
+    const video = await Video.findById(videoId);
+
+    if(!video){
+        throw new ApiError(404, "Video not found or deleted");
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video fetched successfully"));
 
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     //TODO: update video details like title, description, thumbnail
+    const video = await Video.findById(videoId);
+    if(!video) {
+        throw new ApiError(404, "Video not found or deleted");
+    }
+    const user = req.user?._id;
+    if(video?.owner?.toString() !== user?.toString()) {
+        throw new ApiError(403, "You are not authorized to update this video");
+    }
+
+    // otherwise take input from frontend
+    const { title, description } = req.body;
+
+    if(title) video.title = title;
+    if(description) video.description = description;
+
+    // if thumbnail handling..
+    const thumbnailLocalPath = req.file?.single("thumbnail")?.path;
+
+    if(thumbnailLocalPath) {
+        const thumbUpload = await uploadOnCloudinary(thumbnailLocalPath);
+        if(!thumbUpload?.url) {
+            throw new ApiError(500, "Thumbnail upload failed on Cloudinary");
+        }
+        video.thumbnail = thumbUpload.url;
+        fs.unlinkSync(thumbnailLocalPath);
+    }
+    
+    const updatedVideo = await video.save({ validateBeforeSave: false, new: true });
+    return res
+    .status(200)
+    .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
