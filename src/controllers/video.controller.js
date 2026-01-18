@@ -3,14 +3,17 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinay.js";
+import fs from "fs";
 
 const getAllVideos = asyncHandler(async (req, res) => {
     // const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
     //TODO: get all videos based on query, sort, pagination
-    let page = 1
-    let limit = 10
+    let page = 1;
+    let limit = 10;
 
-    const videos = await Video.find({}).skip((page - 1) * limit).limit(limit);
+    const videos = await Video.find({})
+        .skip((page - 1) * limit)
+        .limit(limit);
     return res
         .status(200)
         .json(new ApiResponse(200, videos, "Videos fetched successfully"));
@@ -68,7 +71,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Thumbnail upload failed on Cloudinary");
     }
 
-    if(!req?.user?._id) {
+    if (!req?.user?._id) {
         throw new ApiError(500, "You are not authenticated");
     }
 
@@ -89,62 +92,61 @@ const publishAVideo = asyncHandler(async (req, res) => {
     return res
         .status(201)
         .json(new ApiResponse(201, video, "Video uploaded successfully"));
-
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     //TODO: get video by id
-    if(!videoId){
+    if (!videoId) {
         throw new ApiError(404, "Video not found or deleted");
     }
 
     const video = await Video.findById(videoId);
 
-    if(!video){
+    if (!video) {
         throw new ApiError(404, "Video not found or deleted");
     }
 
     return res
-    .status(200)
-    .json(new ApiResponse(200, video, "Video fetched successfully"));
-
+        .status(200)
+        .json(new ApiResponse(200, video, "Video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     //TODO: update video details like title, description, thumbnail
     const video = await Video.findById(videoId);
-    if(!video) {
+    if (!video) {
         throw new ApiError(404, "Video not found or deleted");
     }
     const user = req.user?._id;
-    if(video?.owner?.toString() !== user?.toString()) {
+    if (video?.owner?.toString() !== user?.toString()) {
         throw new ApiError(403, "You are not authorized to update this video");
     }
 
     // otherwise take input from frontend
     const { title, description } = req.body;
 
-    if(title) video.title = title;
-    if(description) video.description = description;
+    if (title) video.title = title;
+    if (description) video.description = description;
 
     // if thumbnail handling..
-    const thumbnailLocalPath = req.file?.single("thumbnail")?.path;
-
-    if(thumbnailLocalPath) {
+    const thumbnailLocalPath = req.file?.path || null;
+    if (thumbnailLocalPath) {
         const thumbUpload = await uploadOnCloudinary(thumbnailLocalPath);
-        if(!thumbUpload?.url) {
+        if (!thumbUpload?.url) {
             throw new ApiError(500, "Thumbnail upload failed on Cloudinary");
         }
         video.thumbnail = thumbUpload.url;
-        fs.unlinkSync(thumbnailLocalPath);
     }
-    
-    const updatedVideo = await video.save({ validateBeforeSave: false, new: true });
+
+    const updatedVideo = await video.save({
+        validateBeforeSave: false,
+        new: true,
+    });
     return res
-    .status(200)
-    .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
+        .status(200)
+        .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
